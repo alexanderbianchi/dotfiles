@@ -1,0 +1,14 @@
+[user]
+	email = alexbianchi15@gmail.com
+	signingkey = key::ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIAhUjo2wed6e4A5mJzj7Z269Isga/7oqfxvVJzQuORje
+[dd-gitsign]
+	username = alexanderbianchi
+[gpg]
+	format = ssh
+[gpg "ssh"]
+	program = dd-gitsign
+	allowedSignersFile = ~/.config/gitsign/allowed-signers
+[commit]
+	gpgsign = true
+[tag]
+	gpgsign = true

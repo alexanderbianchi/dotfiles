@@ -1,0 +1,12 @@
+# Global git ignore patterns
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+*null-ls*
+
+# Claude Kanban
+.claude-kanban/
+.worktrees/
+.claude-kanban-status

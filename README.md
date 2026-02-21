@@ -1,22 +1,37 @@
-# Example dotfiles repo for initializing workspaces
+# dotfiles
 
-This repository is supposed to be used as a template for dotfiles you
-would like to have added to each new workspace that is created.  To use
-it, first you must create a new personal repository with this specified
-as a template. Go to http://github.com/new and initialize the repo as
-follows
+Personal dotfiles for Datadog Workspaces (also works on macOS).
 
-![Setting up dotfiles](docs/new_repo_screen.png)
+## What's included
 
-Alternatively, [this link](https://github.com/new?owner=@me&template_name=workspaces-dotfiles-template&template_owner=DataDog&name=dotfiles&visibility=public&description=Home+directory+initialization+for+workspaces)
-will pre-fill the form with valid values.
+- **zsh** - Oh My Zsh with robbyrussell theme, vi mode, custom aliases and functions
+- **neovim** - Kickstart.nvim-based config with LSP, Telescope, Treesitter, Git integration, Claude Code integration
+- **tmux** - Vim-like navigation, mouse support, vi copy mode
+- **git** - Delta pager, gitsign commit signing, diff3 merge style
+- **claude-kanban** - Terminal UI kanban board for Claude Code sessions (installed via cargo)
+- **gh** - GitHub CLI config
 
-Once `Create repository` has been selected, clone the new repository locally, modify
-it as appropriate following comments in the provided files. At the very least,
-replace text within `<Angle Brackets>` with values more appropriate to you.
-Commit the changes, push and supply the url of the repository to the `--dotfiles`
-parameter the next time you create a workspace.  This can also be persisted in the
-workspaces configuration file.
+## Usage with Workspaces
 
-See [Getting Started with Workspaces Personalization](https://datadoghq.atlassian.net/wiki/spaces/DEVX/pages/3068528729/Getting+Started+with+Workspaces+Personalization)
-for details.
+```bash
+workspaces create <name> --dotfiles https://github.com/alexanderbianchi/dotfiles --shell zsh
+```
+
+Or save in `~/.config/datadog/workspaces/config.yaml`:
+
+```yaml
+shell: zsh
+dotfiles: https://github.com/alexanderbianchi/dotfiles
+```
+
+## What install.sh does
+
+1. Symlinks all dotfiles to the home directory
+2. Installs Oh My Zsh (if not present)
+3. Installs system packages: neovim, tmux, fzf, ripgrep, fd-find, delta, xsel
+4. Installs Rust toolchain (if not present)
+5. Builds and installs claude-kanban from source
+
+## Platform support
+
+The `.zshrc` includes platform detection (`uname`) so it works on both macOS and Linux workspaces. macOS-specific items (Homebrew, pyenv, SCFW, etc.) are conditionally loaded.
