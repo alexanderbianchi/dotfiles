@@ -107,7 +107,17 @@ else
   echo "    delta already available"
 fi
 
-# ── Step 4: Install Rust/Cargo ────────────────────────────────────────────────
+# ── Step 4: Install Claude Code CLI ───────────────────────────────────────────
+if ! command -v claude &>/dev/null; then
+  echo "==> Installing Claude Code CLI..."
+  # Strip Volta from PATH (workspace Volta is broken and intercepts claude)
+  export PATH=$(echo $PATH | tr ':' '\n' | grep -v volta | tr '\n' ':' | sed 's/:$//')
+  curl -fsSL https://claude.ai/install.sh | bash
+else
+  echo "==> Claude Code CLI already installed"
+fi
+
+# ── Step 5: Install Rust/Cargo (for claude-kanban) ────────────────────────────────────────────────
 if ! command -v cargo &>/dev/null; then
   echo "==> Installing Rust toolchain..."
   curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
@@ -116,7 +126,7 @@ else
   echo "==> Rust toolchain already installed"
 fi
 
-# ── Step 5: Install claude-kanban ─────────────────────────────────────────────
+# ── Step 6: Install claude-kanban ─────────────────────────────────────────────
 if ! command -v claude-kanban &>/dev/null; then
   echo "==> Installing claude-kanban..."
   cargo install --git https://github.com/alexanderbianchi/claude-kanban.git 2>&1 || \
@@ -125,7 +135,7 @@ else
   echo "==> claude-kanban already installed"
 fi
 
-# ── Step 6: Set up cron jobs ──────────────────────────────────────────────────
+# ── Step 7: Set up cron jobs ──────────────────────────────────────────────────
 echo "==> Setting up cron jobs..."
 # Build crontab entries
 CRON_ENTRIES=$(cat <<'CRON'

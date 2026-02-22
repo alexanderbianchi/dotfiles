@@ -144,6 +144,10 @@ if $IS_LINUX; then
   # Datadog devtools (workspace location)
   [ -d "$HOME/dd/devtools/bin" ] && export PATH="$HOME/dd/devtools/bin:$PATH"
 
+  # Remove Volta from PATH — workspace Volta install is broken and
+  # intercepts node/npm/claude. Use system node or install manually.
+  export PATH=$(echo $PATH | tr ':' '\n' | grep -v volta | tr '\n' ':' | sed 's/:$//')
+
   # Note: dd-gitsign load-key is laptop-only. Workspace gets signing
   # via SSH agent forwarding automatically.
 fi
