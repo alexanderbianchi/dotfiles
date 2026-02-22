@@ -127,9 +127,17 @@ fi
 
 # ── Step 6: Set up cron jobs ──────────────────────────────────────────────────
 echo "==> Setting up cron jobs..."
+# Build crontab entries
+CRON_ENTRIES=$(cat <<'CRON'
 # Weekly bazel cache cleanup (Sunday midnight)
-(crontab -l 2>/dev/null | grep -v 'bazel clean'; echo "0 0 * * 0 bazel clean --expunge 2>/dev/null") | crontab -
-echo "    Added weekly bazel cache cleanup (Sunday midnight)"
+0 0 * * 0 bazel clean --expunge 2>/dev/null
+# Daily: pull main and build df-executor + dd-datafusion (6am UTC, Mon-Fri)
+0 6 * * 1-5 cd $HOME/dd/dd-source && git checkout main && git pull && bazel build //domains/xpq/apps/df-executor/... //libs/rust/dd-datafusion/... 2>&1 | tail -20 >> $HOME/.cache/daily-build.log
+CRON
+)
+# Merge with existing crontab, removing old versions of our jobs
+(crontab -l 2>/dev/null | grep -v 'bazel clean' | grep -v 'df-executor' | grep -v 'dd-datafusion'; echo "$CRON_ENTRIES") | crontab -
+echo "    Added weekly bazel cleanup + daily build cron jobs"
 
 # ── Summary ───────────────────────────────────────────────────────────────────
 echo ""
