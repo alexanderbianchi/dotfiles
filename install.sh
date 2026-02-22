@@ -131,8 +131,8 @@ echo "==> Setting up cron jobs..."
 CRON_ENTRIES=$(cat <<'CRON'
 # Weekly bazel cache cleanup (Sunday midnight)
 0 0 * * 0 bazel clean --expunge 2>/dev/null
-# Daily: pull main and build df-executor + dd-datafusion (6am UTC, Mon-Fri)
-0 6 * * 1-5 cd $HOME/dd/dd-source && git checkout main && git pull && bazel build //domains/xpq/apps/df-executor/... //libs/rust/dd-datafusion/... 2>&1 | tail -20 >> $HOME/.cache/daily-build.log
+# Daily: fetch main and build df-executor + dd-datafusion (6am UTC, Mon-Fri)
+0 6 * * 1-5 cd $HOME/dd/dd-source && git fetch origin main && git reset --hard origin/main && bazel build //domains/xpq/apps/df-executor/... //libs/rust/dd-datafusion/... 2>&1 | tail -20 >> $HOME/.cache/daily-build.log
 CRON
 )
 # Merge with existing crontab, removing old versions of our jobs
