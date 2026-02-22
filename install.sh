@@ -61,7 +61,22 @@ install_if_missing() {
 
 echo "==> Checking system packages..."
 sudo apt-get update -qq 2>/dev/null || true
-install_if_missing nvim neovim
+
+# Neovim: install latest from GitHub (apt version is too old)
+if ! command -v nvim &>/dev/null || [[ "$(nvim --version | head -1)" < "NVIM v0.10" ]]; then
+  echo "    Installing latest Neovim..."
+  curl -fsSL -o /tmp/nvim-linux-x86_64.tar.gz \
+    https://github.com/neovim/neovim/releases/latest/download/nvim-linux-x86_64.tar.gz
+  tar xzf /tmp/nvim-linux-x86_64.tar.gz -C /tmp/
+  sudo rm -rf /opt/nvim
+  sudo mv /tmp/nvim-linux-x86_64 /opt/nvim
+  sudo ln -sf /opt/nvim/bin/nvim /usr/local/bin/nvim
+  rm -f /tmp/nvim-linux-x86_64.tar.gz
+  echo "    Neovim $(nvim --version | head -1) installed"
+else
+  echo "    nvim already up to date"
+fi
+
 install_if_missing tmux tmux
 install_if_missing fzf fzf
 install_if_missing rg ripgrep
