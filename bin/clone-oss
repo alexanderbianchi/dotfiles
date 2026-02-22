@@ -1,0 +1,28 @@
+#!/usr/bin/env bash
+# Clone commonly used OSS repos into ~/oss/
+# Run once after workspace creation: clone-oss
+
+OSS_DIR="$HOME/oss"
+mkdir -p "$OSS_DIR"
+
+repos=(
+  "apache/datafusion"
+  "datafusion-contrib/datafusion-table-providers"
+  "apache/arrow-rs"
+  "quickwit-oss/quickwit"
+  "quickwit-oss/tantivy"
+  "datafusion-contrib/datafusion-distributed"
+)
+
+for repo in "${repos[@]}"; do
+  name=$(basename "$repo")
+  if [ -d "$OSS_DIR/$name" ]; then
+    echo "  $name already cloned, pulling..."
+    git -C "$OSS_DIR/$name" pull --ff-only 2>/dev/null || true
+  else
+    echo "  Cloning $repo..."
+    git clone "https://github.com/$repo.git" "$OSS_DIR/$name"
+  fi
+done
+
+echo "Done. OSS repos in $OSS_DIR"
