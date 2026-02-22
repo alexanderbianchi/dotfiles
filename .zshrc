@@ -138,6 +138,9 @@ fi
 
 # ── Linux/Workspace-only setup ───────────────────────────────────────────────
 if $IS_LINUX; then
+  # SSH agent forwarding socket
+  [ -S "$HOME/.ssh/ssh_auth_sock" ] && export SSH_AUTH_SOCK="$HOME/.ssh/ssh_auth_sock"
+
   # Datadog devtools (workspace location)
   [ -d "$HOME/dd/devtools/bin" ] && export PATH="$HOME/dd/devtools/bin:$PATH"
 
