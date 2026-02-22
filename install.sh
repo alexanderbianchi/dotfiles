@@ -3,7 +3,7 @@
 # This runs automatically during workspace creation when an install.sh is present.
 # It replaces the default symlinking behavior, so we handle symlinking ourselves.
 
-set -euo pipefail
+set -uo pipefail
 
 DOTFILES_PATH="$HOME/dotfiles"
 
