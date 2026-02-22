@@ -125,6 +125,12 @@ else
   echo "==> claude-kanban already installed"
 fi
 
+# ── Step 6: Set up cron jobs ──────────────────────────────────────────────────
+echo "==> Setting up cron jobs..."
+# Weekly bazel cache cleanup (Sunday midnight)
+(crontab -l 2>/dev/null | grep -v 'bazel clean'; echo "0 0 * * 0 bazel clean --expunge 2>/dev/null") | crontab -
+echo "    Added weekly bazel cache cleanup (Sunday midnight)"
+
 # ── Summary ───────────────────────────────────────────────────────────────────
 echo ""
 echo "==> Dotfiles installation complete!"
