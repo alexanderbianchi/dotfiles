@@ -11,8 +11,8 @@ echo "==> Installing dotfiles from $DOTFILES_PATH"
 
 # ── Step 1: Symlink dotfiles to home directory ───────────────────────────────
 echo "==> Symlinking dotfiles..."
-# Symlink all hidden files (dotfiles) at the root of the repo
-find "$DOTFILES_PATH" -maxdepth 1 -name '.*' -not -name '.git' -not -name '.gitignore' |
+# Symlink root-level dotfiles (skip .config — handled separately below)
+find "$DOTFILES_PATH" -maxdepth 1 -name '.*' -not -name '.git' -not -name '.gitignore' -not -name '.config' |
 while read -r df; do
   basename=$(basename "$df")
   target="$HOME/$basename"

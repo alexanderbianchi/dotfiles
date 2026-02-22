@@ -85,7 +85,13 @@ export PATH="$VOLTA_HOME/bin:$PATH"
 
 # ── fzf ──────────────────────────────────────────────────────────────────────
 if command -v fzf &>/dev/null; then
-  eval "$(fzf --zsh)"
+  # fzf 0.48+ supports --zsh; older versions need manual sourcing
+  if fzf --zsh &>/dev/null; then
+    eval "$(fzf --zsh)"
+  elif [ -f /usr/share/doc/fzf/examples/key-bindings.zsh ]; then
+    source /usr/share/doc/fzf/examples/key-bindings.zsh
+    [ -f /usr/share/doc/fzf/examples/completion.zsh ] && source /usr/share/doc/fzf/examples/completion.zsh
+  fi
 fi
 
 # ── macOS-only: late setup ───────────────────────────────────────────────────
@@ -135,6 +141,6 @@ if $IS_LINUX; then
   # Datadog devtools (workspace location)
   [ -d "$HOME/dd/devtools/bin" ] && export PATH="$HOME/dd/devtools/bin:$PATH"
 
-  # Gitsign
-  command -v dd-gitsign &>/dev/null && eval "$(dd-gitsign load-key)"
+  # Note: dd-gitsign load-key is laptop-only. Workspace gets signing
+  # via SSH agent forwarding automatically.
 fi
