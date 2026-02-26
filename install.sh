@@ -39,6 +39,13 @@ for config_dir in nvim gh gitsign; do
   fi
 done
 
+# ── Step 1b: Install Ghostty terminfo ─────────────────────────────────────────
+if [ -f "$DOTFILES_PATH/terminfo/xterm-ghostty.terminfo" ]; then
+  echo "==> Installing Ghostty terminfo..."
+  tic -x "$DOTFILES_PATH/terminfo/xterm-ghostty.terminfo" 2>/dev/null
+  echo "    Done"
+fi
+
 # ── Step 2: Install Oh My Zsh ────────────────────────────────────────────────
 if [ ! -d "$HOME/.oh-my-zsh" ]; then
   echo "==> Installing Oh My Zsh..."
