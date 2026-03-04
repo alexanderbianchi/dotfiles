@@ -114,7 +114,14 @@ else
   echo "    delta already available"
 fi
 
-# ── Step 4: Install Claude Code CLI ───────────────────────────────────────────
+# ── Step 4: Install tmux plugins via TPM ─────────────────────────────────────
+# TPM ships as a git submodule — ensure it's initialized
+echo "==> Initializing TPM submodule..."
+git -C "$DOTFILES_PATH" submodule update --init .tmux/plugins/tpm
+echo "==> Installing tmux plugins..."
+"$HOME/.tmux/plugins/tpm/bin/install_plugins" || true
+
+# ── Step 5: Install Claude Code CLI ──────────────────────────────────────────
 if ! command -v claude &>/dev/null; then
   echo "==> Installing Claude Code CLI..."
   # Strip Volta from PATH (workspace Volta is broken and intercepts claude)
@@ -124,7 +131,7 @@ else
   echo "==> Claude Code CLI already installed"
 fi
 
-# ── Step 5: Install Rust/Cargo (for claude-kanban) ────────────────────────────────────────────────
+# ── Step 6: Install Rust/Cargo (for claude-kanban) ────────────────────────────────────────────────
 if ! command -v cargo &>/dev/null; then
   echo "==> Installing Rust toolchain..."
   curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
@@ -133,7 +140,7 @@ else
   echo "==> Rust toolchain already installed"
 fi
 
-# ── Step 6: Install claude-kanban ─────────────────────────────────────────────
+# ── Step 7: Install claude-kanban ─────────────────────────────────────────────
 if ! command -v claude-kanban &>/dev/null; then
   echo "==> Installing claude-kanban..."
   cargo install --git https://github.com/alexanderbianchi/claude-kanban.git 2>&1 || \
@@ -142,7 +149,7 @@ else
   echo "==> claude-kanban already installed"
 fi
 
-# ── Step 7: Set up cron jobs ──────────────────────────────────────────────────
+# ── Step 8: Set up cron jobs ──────────────────────────────────────────────────
 echo "==> Setting up cron jobs..."
 # Build crontab entries
 CRON_ENTRIES=$(cat <<'CRON'
