@@ -9,6 +9,7 @@ Personal dotfiles for Datadog Workspaces (also works on macOS).
 - **tmux** - Vim-like navigation, mouse support, vi copy mode
 - **git** - Delta pager, gitsign commit signing, diff3 merge style
 - **claude-kanban** - Terminal UI kanban board for Claude Code sessions (installed via cargo)
+- **Pi** - Coding agent plus personal extensions, skills, MCP bridge, Herdr integration, subagents, and worktree tooling
 - **gh** - GitHub CLI config
 
 ## Usage with Workspaces
@@ -30,7 +31,10 @@ dotfiles: https://github.com/alexanderbianchi/dotfiles
 2. Installs Oh My Zsh (if not present)
 3. Installs system packages: neovim, tmux, fzf, ripgrep, fd-find, delta, xsel
 4. Installs Rust toolchain (if not present)
-5. Builds and installs claude-kanban from source
+5. Installs Pi and the packages from the private `alexanderbianchi/pi-config` repository plus pinned upstream packages
+6. Builds and installs claude-kanban from source
+
+The Pi setup requires GitHub access to the private `alexanderbianchi/pi-config` repository. Credentials, OAuth tokens, sessions, runtime state, and proprietary binaries are not stored in this public dotfiles repository.
 
 ## Platform support
 

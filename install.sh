@@ -131,7 +131,49 @@ else
   echo "==> Claude Code CLI already installed"
 fi
 
-# ── Step 6: Install Rust/Cargo (for claude-kanban) ────────────────────────────────────────────────
+# ── Step 6: Install Pi and personal configuration ────────────────────────────
+if ! command -v pi &>/dev/null; then
+  echo "==> Installing Pi..."
+  npm install -g --ignore-scripts @earendil-works/pi-coding-agent || \
+    echo "    Warning: Pi install failed. Ensure Node.js/npm is available and rerun this script."
+else
+  echo "==> Pi already installed"
+fi
+
+if command -v pi &>/dev/null; then
+  echo "==> Installing Pi packages..."
+  PI_PACKAGES=(
+    "git:git@github.com:alexanderbianchi/pi-config"
+    "git:github.com/tintinweb/pi-subagents@285b6924d653e4c1a331dad9458cb85faaf1bc31"
+    "git:github.com/ybbid/golang-skills@2346f7b2b5dd6fc216948f4163f5e1ecbaf1cbd7"
+    "git:github.com/ourovoros-io/ourovoros-claude@8884add7c699ebaae6366b57fe3f91496680f753"
+    "git:github.com/1broseidon/ketch@9611112432d9779ba973dc0c401cefd3837fa3f2"
+  )
+  for package in "${PI_PACKAGES[@]}"; do
+    pi install "$package" || echo "    Warning: failed to install $package"
+  done
+
+  # pi-worktrees lives inside another dotfiles repository rather than at its root.
+  PI_SOURCES="$HOME/.pi/agent/sources"
+  WORKTREES_SOURCE="$PI_SOURCES/dmmulroy-dotfiles"
+  mkdir -p "$PI_SOURCES"
+  if [ ! -d "$WORKTREES_SOURCE/.git" ]; then
+    git clone https://github.com/dmmulroy/.dotfiles "$WORKTREES_SOURCE" || true
+  fi
+  if [ -d "$WORKTREES_SOURCE/.git" ]; then
+    git -C "$WORKTREES_SOURCE" fetch origin || true
+    git -C "$WORKTREES_SOURCE" checkout --detach f9f7aa1a3638d6bfb6fa0b94fd110185534a2895 || true
+    pi install "$WORKTREES_SOURCE/home/.pi/agent/extensions/pi-worktrees" || \
+      echo "    Warning: failed to install pi-worktrees"
+  fi
+
+  PI_CONFIG_REPO="$HOME/.pi/agent/git/github.com/alexanderbianchi/pi-config"
+  if [ -x "$PI_CONFIG_REPO/scripts/configure-mcp.sh" ]; then
+    "$PI_CONFIG_REPO/scripts/configure-mcp.sh"
+  fi
+fi
+
+# ── Step 7: Install Rust/Cargo (for claude-kanban) ───────────────────────────
 if ! command -v cargo &>/dev/null; then
   echo "==> Installing Rust toolchain..."
   curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
@@ -140,7 +182,7 @@ else
   echo "==> Rust toolchain already installed"
 fi
 
-# ── Step 7: Install claude-kanban ─────────────────────────────────────────────
+# ── Step 8: Install claude-kanban ─────────────────────────────────────────────
 if ! command -v claude-kanban &>/dev/null; then
   echo "==> Installing claude-kanban..."
   cargo install --git https://github.com/alexanderbianchi/claude-kanban.git 2>&1 || \
@@ -149,7 +191,7 @@ else
   echo "==> claude-kanban already installed"
 fi
 
-# ── Step 8: Set up cron jobs ──────────────────────────────────────────────────
+# ── Step 9: Set up cron jobs ──────────────────────────────────────────────────
 echo "==> Setting up cron jobs..."
 # Build crontab entries
 CRON_ENTRIES=$(cat <<'CRON'
