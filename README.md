@@ -14,15 +14,17 @@ Personal dotfiles for Datadog Workspaces (also works on macOS).
 
 ## Usage with Workspaces
 
+Register this repository once through the Workspaces dotfiles setup, then create workspaces normally:
+
 ```bash
-workspaces create <name> --dotfiles https://github.com/alexanderbianchi/dotfiles --shell zsh
+workspaces dotfiles setup
+workspaces create <name> --repo dd-source --shell zsh
 ```
 
-Or save in `~/.config/datadog/workspaces/config.yaml`:
+The Workspaces service clones the configured dotfiles repository and runs `install.sh` during creation. Reapply the latest committed setup to existing workspaces with:
 
-```yaml
-shell: zsh
-dotfiles: https://github.com/alexanderbianchi/dotfiles
+```bash
+workspaces dotfiles sync [workspace-name]
 ```
 
 ## What install.sh does
@@ -31,10 +33,10 @@ dotfiles: https://github.com/alexanderbianchi/dotfiles
 2. Installs Oh My Zsh (if not present)
 3. Installs system packages: neovim, tmux, fzf, ripgrep, fd-find, delta, xsel
 4. Installs Rust toolchain (if not present)
-5. Installs Pi and the packages from the private `alexanderbianchi/pi-config` repository plus pinned upstream packages
+5. Installs Pi, then runs the idempotent bootstrap from the private `alexanderbianchi/pi-config` package
 6. Builds and installs claude-kanban from source
 
-The Pi setup requires GitHub access to the private `alexanderbianchi/pi-config` repository. Credentials, OAuth tokens, sessions, runtime state, and proprietary binaries are not stored in this public dotfiles repository.
+The Pi setup requires GitHub access to the private `alexanderbianchi/pi-config` repository. Credentials, OAuth tokens, sessions, runtime state, and proprietary binaries are not stored in either repository; authenticate with `/login` on a new workspace or provision an API key through `workspaces secrets`.
 
 ## Platform support
 

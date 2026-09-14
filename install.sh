@@ -141,35 +141,18 @@ else
 fi
 
 if command -v pi &>/dev/null; then
-  echo "==> Installing Pi packages..."
-  PI_PACKAGES=(
-    "git:git@github.com:alexanderbianchi/pi-config"
-    "git:github.com/tintinweb/pi-subagents@285b6924d653e4c1a331dad9458cb85faaf1bc31"
-    "git:github.com/ybbid/golang-skills@2346f7b2b5dd6fc216948f4163f5e1ecbaf1cbd7"
-    "git:github.com/ourovoros-io/ourovoros-claude@8884add7c699ebaae6366b57fe3f91496680f753"
-    "git:github.com/1broseidon/ketch@9611112432d9779ba973dc0c401cefd3837fa3f2"
-  )
-  for package in "${PI_PACKAGES[@]}"; do
-    pi install "$package" || echo "    Warning: failed to install $package"
-  done
-
-  # pi-worktrees lives inside another dotfiles repository rather than at its root.
-  PI_SOURCES="$HOME/.pi/agent/sources"
-  WORKTREES_SOURCE="$PI_SOURCES/dmmulroy-dotfiles"
-  mkdir -p "$PI_SOURCES"
-  if [ ! -d "$WORKTREES_SOURCE/.git" ]; then
-    git clone https://github.com/dmmulroy/.dotfiles "$WORKTREES_SOURCE" || true
-  fi
-  if [ -d "$WORKTREES_SOURCE/.git" ]; then
-    git -C "$WORKTREES_SOURCE" fetch origin || true
-    git -C "$WORKTREES_SOURCE" checkout --detach f9f7aa1a3638d6bfb6fa0b94fd110185534a2895 || true
-    pi install "$WORKTREES_SOURCE/home/.pi/agent/extensions/pi-worktrees" || \
-      echo "    Warning: failed to install pi-worktrees"
-  fi
-
-  PI_CONFIG_REPO="$HOME/.pi/agent/git/github.com/alexanderbianchi/pi-config"
-  if [ -x "$PI_CONFIG_REPO/scripts/configure-mcp.sh" ]; then
-    "$PI_CONFIG_REPO/scripts/configure-mcp.sh"
+  echo "==> Bootstrapping personal Pi configuration..."
+  PI_CONFIG_SOURCE="git:git@github.com:alexanderbianchi/pi-config"
+  if pi install "$PI_CONFIG_SOURCE"; then
+    PI_CONFIG_REPO="$HOME/.pi/agent/git/github.com/alexanderbianchi/pi-config"
+    if [ -x "$PI_CONFIG_REPO/scripts/bootstrap.sh" ]; then
+      "$PI_CONFIG_REPO/scripts/bootstrap.sh" || \
+        echo "    Warning: Pi bootstrap completed with warnings"
+    else
+      echo "    Warning: Pi bootstrap script is missing from $PI_CONFIG_REPO"
+    fi
+  else
+    echo "    Warning: failed to install $PI_CONFIG_SOURCE"
   fi
 fi
 
