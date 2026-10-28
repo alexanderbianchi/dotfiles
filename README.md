@@ -1,7 +1,8 @@
 # dotfiles
 
 Portable personal shell, Neovim, tmux, Ghostty, Git and Pi configuration.
-Company-only settings live separately in `DataDog/workspaces-dotfiles`.
+Company-only settings live separately in `ddoghq/workspaces-dotfiles` (the old
+`DataDog/workspaces-dotfiles` repository is frozen).
 
 ## Install
 
