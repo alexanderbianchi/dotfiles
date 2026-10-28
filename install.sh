@@ -1,194 +1,54 @@
 #!/usr/bin/env bash
-# Dotfiles install script for Datadog Workspaces
-# This runs automatically during workspace creation when an install.sh is present.
-# It replaces the default symlinking behavior, so we handle symlinking ourselves.
+# Shared by the public dotfiles repo and users/alex.bianchi in Workspaces.
+set -euo pipefail
 
-set -uo pipefail
+DOTFILES_PATH=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd -P)
+export PATH="$HOME/.local/bin:$HOME/.pi/agent/bin:$HOME/.cargo/bin:$PATH"
+mode="${1:-}"
+case "$mode" in
+  ''|--links-only|--pi-only) ;;
+  *) printf 'Usage: %s [--links-only|--pi-only]\n' "$0" >&2; exit 2 ;;
+esac
 
-DOTFILES_PATH="$HOME/dotfiles"
-
-echo "==> Installing dotfiles from $DOTFILES_PATH"
-
-# ── Step 1: Symlink dotfiles to home directory ───────────────────────────────
-echo "==> Symlinking dotfiles..."
-# Symlink root-level dotfiles (skip .config — handled separately below)
-find "$DOTFILES_PATH" -maxdepth 1 -name '.*' -not -name '.git' -not -name '.gitignore' -not -name '.config' |
-while read -r df; do
-  basename=$(basename "$df")
-  target="$HOME/$basename"
-  if [ -e "$target" ] || [ -L "$target" ]; then
-    echo "    Backing up existing $target -> ${target}.bak"
-    mv "$target" "${target}.bak" 2>/dev/null || true
+# Preserve conflicts once; repeated syncs leave correct links alone. Never link
+# a whole agent or gh directory over its credentials, sessions, or runtime data.
+link_file() {
+  local src="$1" dest="$2" backup
+  [[ -e "$src" ]] || return 0
+  if [[ -L "$dest" && "$(readlink "$dest")" == "$src" ]]; then
+    return 0
   fi
-  ln -sf "$df" "$target"
-  echo "    Linked $basename"
-done
-
-# Symlink .config subdirectories (nvim, gh, gitsign)
-for config_dir in nvim gh gitsign; do
-  src="$DOTFILES_PATH/.config/$config_dir"
-  dest="$HOME/.config/$config_dir"
-  if [ -d "$src" ]; then
-    mkdir -p "$HOME/.config"
-    if [ -e "$dest" ] || [ -L "$dest" ]; then
-      echo "    Backing up existing $dest -> ${dest}.bak"
-      mv "$dest" "${dest}.bak" 2>/dev/null || true
-    fi
-    ln -sf "$src" "$dest"
-    echo "    Linked .config/$config_dir"
+  mkdir -p "$(dirname "$dest")"
+  if [[ -e "$dest" || -L "$dest" ]]; then
+    mkdir -p "$HOME/.local/state/dotfiles/backups"
+    backup=$(mktemp -d "$HOME/.local/state/dotfiles/backups/conflict.XXXXXX")
+    mv "$dest" "$backup/$(basename "$dest")"
+    printf 'Preserved %s in %s\n' "$dest" "$backup"
   fi
-done
-
-# ── Step 1b: Install Ghostty terminfo ─────────────────────────────────────────
-if [ -f "$DOTFILES_PATH/terminfo/xterm-ghostty.terminfo" ]; then
-  echo "==> Installing Ghostty terminfo..."
-  tic -x "$DOTFILES_PATH/terminfo/xterm-ghostty.terminfo" 2>/dev/null
-  echo "    Done"
-fi
-
-# ── Step 2: Install Oh My Zsh ────────────────────────────────────────────────
-if [ ! -d "$HOME/.oh-my-zsh" ]; then
-  echo "==> Installing Oh My Zsh..."
-  sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)" "" --unattended || true
-else
-  echo "==> Oh My Zsh already installed"
-fi
-
-# ── Step 3: Install system packages ──────────────────────────────────────────
-install_if_missing() {
-  local cmd="$1"
-  local pkg="${2:-$1}"
-  if ! command -v "$cmd" &>/dev/null; then
-    echo "    Installing $pkg..."
-    sudo apt-get install -y "$pkg" 2>/dev/null || true
-  else
-    echo "    $cmd already available"
-  fi
+  ln -s "$src" "$dest"
 }
 
-echo "==> Checking system packages..."
-sudo apt-get update -qq 2>/dev/null || true
-
-# Neovim: install latest from GitHub (apt version is too old)
-if ! command -v nvim &>/dev/null || [[ "$(nvim --version | head -1)" < "NVIM v0.10" ]]; then
-  echo "    Installing latest Neovim..."
-  curl -fsSL -o /tmp/nvim-linux-x86_64.tar.gz \
-    https://github.com/neovim/neovim/releases/latest/download/nvim-linux-x86_64.tar.gz
-  tar xzf /tmp/nvim-linux-x86_64.tar.gz -C /tmp/
-  sudo rm -rf /opt/nvim
-  sudo mv /tmp/nvim-linux-x86_64 /opt/nvim
-  sudo ln -sf /opt/nvim/bin/nvim /usr/local/bin/nvim
-  rm -f /tmp/nvim-linux-x86_64.tar.gz
-  echo "    Neovim $(nvim --version | head -1) installed"
-else
-  echo "    nvim already up to date"
-fi
-
-install_if_missing tmux tmux
-install_if_missing fzf fzf
-install_if_missing rg ripgrep
-install_if_missing fd fd-find
-install_if_missing xsel xsel
-install_if_missing make make
-install_if_missing unzip unzip
-
-# Install delta (git-delta) - not in standard apt repos, use cargo or download
-if ! command -v delta &>/dev/null; then
-  echo "    Installing git-delta..."
-  # Try downloading a prebuilt binary
-  DELTA_VERSION="0.18.2"
-  ARCH=$(uname -m)
-  if [ "$ARCH" = "x86_64" ]; then
-    DELTA_ARCH="x86_64-unknown-linux-gnu"
-  elif [ "$ARCH" = "aarch64" ]; then
-    DELTA_ARCH="aarch64-unknown-linux-gnu"
-  else
-    DELTA_ARCH="x86_64-unknown-linux-gnu"
+if [[ "$mode" != --pi-only ]]; then
+  for name in .zshrc .zshenv .inputrc .gitconfig .gitignore_global .tmux.conf .bazelrc; do
+    link_file "$DOTFILES_PATH/$name" "$HOME/$name"
+  done
+  link_file "$DOTFILES_PATH/.config/nvim" "$HOME/.config/nvim"
+  link_file "$DOTFILES_PATH/.config/gh/config.yml" "$HOME/.config/gh/config.yml"
+  link_file "$DOTFILES_PATH/.config/ghostty/config" "$HOME/.config/ghostty/config"
+  if [[ "$(uname -s)" == Darwin ]]; then
+    link_file "$DOTFILES_PATH/.config/ghostty/config" "$HOME/Library/Application Support/com.mitchellh.ghostty/config"
   fi
-  curl -fsSL "https://github.com/dandavison/delta/releases/download/${DELTA_VERSION}/delta-${DELTA_VERSION}-${DELTA_ARCH}.tar.gz" | \
-    tar xz -C /tmp/
-  sudo mv "/tmp/delta-${DELTA_VERSION}-${DELTA_ARCH}/delta" /usr/local/bin/delta 2>/dev/null || \
-    mv "/tmp/delta-${DELTA_VERSION}-${DELTA_ARCH}/delta" "$HOME/.local/bin/delta"
-  echo "    delta installed"
-else
-  echo "    delta already available"
+  [[ "$mode" == --links-only ]] && exit 0
+  "$DOTFILES_PATH/scripts/install-system.sh"
 fi
 
-# ── Step 4: Install tmux plugins via TPM ─────────────────────────────────────
-# TPM ships as a git submodule — ensure it's initialized
-echo "==> Initializing TPM submodule..."
-git -C "$DOTFILES_PATH" submodule update --init .tmux/plugins/tpm
-echo "==> Installing tmux plugins..."
-"$HOME/.tmux/plugins/tpm/bin/install_plugins" || true
+# Pi installation is part of normal workspace creation AND dotfiles sync.
+# Errors propagate rather than claiming a successful install without extensions.
+"$DOTFILES_PATH/scripts/install-pi.sh"
 
-# ── Step 5: Install Claude Code CLI ──────────────────────────────────────────
-if ! command -v claude &>/dev/null; then
-  echo "==> Installing Claude Code CLI..."
-  # Strip Volta from PATH (workspace Volta is broken and intercepts claude)
-  export PATH=$(echo $PATH | tr ':' '\n' | grep -v volta | tr '\n' ':' | sed 's/:$//')
-  curl -fsSL https://claude.ai/install.sh | bash
-else
-  echo "==> Claude Code CLI already installed"
+# Only the company-owned copy contains this overlay (gateway, internal skills,
+# work shell settings, and optional Trajectory registration).
+if [[ -x "$DOTFILES_PATH/scripts/install-work.sh" ]]; then
+  "$DOTFILES_PATH/scripts/install-work.sh"
 fi
-
-# ── Step 6: Install Pi and personal configuration ────────────────────────────
-if ! command -v pi &>/dev/null; then
-  echo "==> Installing Pi..."
-  npm install -g --ignore-scripts @earendil-works/pi-coding-agent || \
-    echo "    Warning: Pi install failed. Ensure Node.js/npm is available and rerun this script."
-else
-  echo "==> Pi already installed"
-fi
-
-if command -v pi &>/dev/null; then
-  echo "==> Bootstrapping personal Pi configuration..."
-  PI_CONFIG_SOURCE="git:git@github.com:alexanderbianchi/pi-config"
-  if pi install "$PI_CONFIG_SOURCE"; then
-    PI_CONFIG_REPO="$HOME/.pi/agent/git/github.com/alexanderbianchi/pi-config"
-    if [ -x "$PI_CONFIG_REPO/scripts/bootstrap.sh" ]; then
-      "$PI_CONFIG_REPO/scripts/bootstrap.sh" || \
-        echo "    Warning: Pi bootstrap completed with warnings"
-    else
-      echo "    Warning: Pi bootstrap script is missing from $PI_CONFIG_REPO"
-    fi
-  else
-    echo "    Warning: failed to install $PI_CONFIG_SOURCE"
-  fi
-fi
-
-# ── Step 7: Install Rust/Cargo (for claude-kanban) ───────────────────────────
-if ! command -v cargo &>/dev/null; then
-  echo "==> Installing Rust toolchain..."
-  curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
-  source "$HOME/.cargo/env"
-else
-  echo "==> Rust toolchain already installed"
-fi
-
-# ── Step 8: Install claude-kanban ─────────────────────────────────────────────
-if ! command -v claude-kanban &>/dev/null; then
-  echo "==> Installing claude-kanban..."
-  cargo install --git https://github.com/alexanderbianchi/claude-kanban.git 2>&1 || \
-    echo "    Warning: claude-kanban install failed. You may need to install it manually."
-else
-  echo "==> claude-kanban already installed"
-fi
-
-# ── Step 9: Set up cron jobs ──────────────────────────────────────────────────
-echo "==> Setting up cron jobs..."
-# Build crontab entries
-CRON_ENTRIES=$(cat <<'CRON'
-# Weekly bazel cache cleanup (Sunday midnight)
-0 0 * * 0 bazel clean --expunge 2>/dev/null
-# Daily: pull main and build df-executor + dd-datafusion (6am UTC, Mon-Fri)
-0 6 * * 1-5 cd $HOME/dd/dd-source && git checkout main && git pull && bazel build //domains/xpq/apps/df-executor/... //libs/rust/dd-datafusion/... 2>&1 | tail -20 >> $HOME/.cache/daily-build.log
-CRON
-)
-# Merge with existing crontab, removing old versions of our jobs
-(crontab -l 2>/dev/null | grep -v 'bazel clean' | grep -v 'df-executor' | grep -v 'dd-datafusion'; echo "$CRON_ENTRIES") | crontab -
-echo "    Added weekly bazel cleanup + daily build cron jobs"
-
-# ── Summary ───────────────────────────────────────────────────────────────────
-echo ""
-echo "==> Dotfiles installation complete!"
-echo "    Restart your shell or run: source ~/.zshrc"
+printf 'Dotfiles installed. Restart your shell; authenticate in Pi with /login.\n'

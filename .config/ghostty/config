@@ -1,0 +1,3 @@
+# Make Cmd+/ available to Neovim as Ctrl-_ for toggling comments.
+keybind = super+slash=text:\x1f
+keybind = super+shift+slash=text:\x1f

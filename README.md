@@ -1,43 +1,79 @@
 # dotfiles
 
-Personal dotfiles for Datadog Workspaces (also works on macOS).
+Portable personal shell, Neovim, tmux, Ghostty, Git and Pi configuration.
+Company-only settings live separately in `DataDog/workspaces-dotfiles`.
 
-## What's included
+## Install
 
-- **zsh** - Oh My Zsh with robbyrussell theme, vi mode, custom aliases and functions
-- **neovim** - Kickstart.nvim-based config with LSP, Telescope, Treesitter, Git integration, Claude Code integration
-- **tmux** - Vim-like navigation, mouse support, vi copy mode
-- **git** - Delta pager, gitsign commit signing, diff3 merge style
-- **claude-kanban** - Terminal UI kanban board for Claude Code sessions (installed via cargo)
-- **Pi** - Coding agent plus personal extensions, skills, MCP bridge, Herdr integration, subagents, and worktree tooling
-- **gh** - GitHub CLI config
-
-## Usage with Workspaces
-
-Register this repository once through the Workspaces dotfiles setup, then create workspaces normally:
+Requires Bash, Git, Node.js 22.19+ and npm. Linux system setup currently uses apt;
+macOS system tools are left to your package manager.
 
 ```bash
-workspaces dotfiles setup
-workspaces create <name> --repo dd-source --shell zsh
+git clone https://github.com/alexanderbianchi/dotfiles ~/dotfiles
+~/dotfiles/install.sh
 ```
 
-The Workspaces service clones the configured dotfiles repository and runs `install.sh` during creation. Reapply the latest committed setup to existing workspaces with:
+The installer:
+
+1. Links an explicit list of configuration files, preserving conflicts under
+   `~/.local/state/dotfiles/backups`. Repeated installs keep correct links alone.
+   Only `gh/config.yml` is linked, never `gh/hosts.yml` or an entire agent directory.
+2. Installs Linux tools, Oh My Zsh, Ghostty terminfo and TPM. TPM is cloned to
+   `~/.local/share/tmux/plugins/tpm` instead of relying on a Git submodule.
+3. Installs Pi 0.85.1 when Pi is missing/older, preserving newer versions. Installs
+   the pinned private package in `config/pi-package.txt`, then **runs its bootstrap
+   to install the full extension and skill set**. GitHub SSH access to
+   `alexanderbianchi/pi-config` is required. Failures stop the installer.
+4. Runs `scripts/install-work.sh` only when the company-owned overlay is present.
+
+Pi includes copy-friendly output, Herdr integration, an MCP bridge, subagents,
+worktrees, Markdown preview/tree, render-btw, Herdr aside, Vim mode, Go/Rust skills,
+and ketch. Credentials and sessions stay local; use Pi's `/login` on a new machine.
+Herdr/Trajectory binaries are managed separately, not bundled here.
 
 ```bash
-workspaces dotfiles sync [workspace-name]
+# Link configuration without network/package installation:
+~/dotfiles/install.sh --links-only
+# Install/reconcile Pi and the optional work overlay only:
+~/dotfiles/install.sh --pi-only
 ```
 
-## What install.sh does
+There are **no automatic cache deletions, branch switches, or background builds**.
+Old cron jobs from earlier versions are not silently changed: review `crontab -l`
+and remove the old weekly cleanup/daily build jobs manually if they were installed.
 
-1. Symlinks all dotfiles to the home directory
-2. Installs Oh My Zsh (if not present)
-3. Installs system packages: neovim, tmux, fzf, ripgrep, fd-find, delta, xsel
-4. Installs Rust toolchain (if not present)
-5. Installs Pi, then runs the idempotent bootstrap from the private `alexanderbianchi/pi-config` package
-6. Builds and installs claude-kanban from source
+## Workspaces
 
-The Pi setup requires GitHub access to the private `alexanderbianchi/pi-config` repository. Credentials, OAuth tokens, sessions, runtime state, and proprietary binaries are not stored in either repository; authenticate with `/login` on a new workspace or provision an API key through `workspaces secrets`.
+`workspaces dotfiles migrate <URL>` is a one-time copy, not a continuous GitHub
+sync. The company-owned copy also carries private work configuration, so subsequent
+updates should copy the public files while preserving that overlay and open a
+**draft PR** under `users/alex.bianchi/`.
 
-## Platform support
+After that PR merges:
 
-The `.zshrc` includes platform detection (`uname`) so it works on both macOS and Linux workspaces. macOS-specific items (Homebrew, pyenv, SCFW, etc.) are conditionally loaded.
+```bash
+workspaces dotfiles sync <workspace-name>
+```
+
+Both workspace creation and sync run `install.sh`, including Pi extension
+installation. `--pi-only` can retry that step after fixing GitHub authentication.
+
+## Local customization
+
+- `.zshrc.local`: machine-specific overrides and credential-loading commands.
+- `.gitconfig.local`: local identity/signing/credential helpers. Workspaces manages
+  its own signing configuration; this repo does not force laptop signing keys.
+- `.zshrc.work`: installed only by the company overlay.
+
+Neovim includes notes (`<leader>n`), package tests (`<leader>w`, `go test .` for Go
+modules), diagnostic popups and Ghostty comment keybindings. `gopls` is resolved
+from PATH. No notes, repository contents or credentials are included.
+
+## Tests
+
+```bash
+python3 -m unittest discover -s tests -v
+```
+
+Installer tests use temporary homes and mocked provisioning commands. They never
+install tools into your real home or modify running workspaces.

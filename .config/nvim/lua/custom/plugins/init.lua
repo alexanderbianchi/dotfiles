@@ -5,6 +5,8 @@
 
 -- Load personal keymaps/logic that aren't plugins
 pcall(require, 'custom.terminal')
+pcall(require, 'custom.notes')
+pcall(require, 'custom.test_runner')
 
 return {
   -- Buffer visualization with tabs
@@ -57,6 +59,27 @@ return {
       delay = 1000,
       ignored_filetypes = {},
     },
+    config = function(_, opts)
+      require('gitblame').setup(opts)
+
+      -- The repo backend switch rewrites github.com remotes to the
+      -- `ddoghq.github.com` SSH host alias (see ~/.config/datadog/git/config).
+      -- `git remote get-url` applies that rewrite, so git-blame builds URLs like
+      -- https://ddoghq.github.com/... — normalize the host back to github.com so
+      -- GitBlameOpenFileURL / GitBlameOpenCommitURL open real github.com links.
+      local ok, gbgit = pcall(require, 'gitblame.git')
+      if ok then
+        local original = gbgit.get_remote_url
+        gbgit.get_remote_url = function(callback)
+          original(function(remote_url)
+            if remote_url then
+              remote_url = remote_url:gsub('ddoghq%.github%.com', 'github.com')
+            end
+            callback(remote_url)
+          end)
+        end
+      end
+    end,
     keys = {
       { '<leader>gb', '<cmd>GitBlameToggle<cr>', desc = 'Toggle git blame' },
       { '<leader>go', '<cmd>GitBlameOpenCommitURL<cr>', desc = 'Open commit URL' },
@@ -299,6 +322,61 @@ return {
       { '<leader>cr', '<cmd>ClaudeCodeResume<cr>', desc = 'Resume conversation' },
       { '<leader>cn', '<cmd>ClaudeCodeContinue<cr>', desc = 'Continue conversation' },
       { '<leader>cv', '<cmd>ClaudeCodeVerbose<cr>', desc = 'Toggle verbose logging' },
+    },
+  },
+
+  -- Markdown wiki/vault: wikilinks, list/checkbox continuation, link traversal.
+  -- Vault root is detected by the CLAUDE.md tell-file in ~/personal.
+  {
+    'jakewvincent/mkdnflow.nvim',
+    ft = 'markdown',
+    opts = {
+      modules = {
+        bib = false,
+        completion = false,
+      },
+      silent = true,
+      perspective = {
+        priority = 'root',
+        root_tell = 'CLAUDE.md',
+        fallback = 'current',
+        nvim_wd_heel = false,
+      },
+      links = {
+        style = 'wiki',
+        conceal = true,
+        transform_explicit = function(text)
+          return text:gsub(' ', '-'):lower()
+        end,
+      },
+      new_file_template = {
+        use_template = true,
+        template = '# {{title}}\n\n',
+      },
+      to_do = {
+        statuses = {
+          not_started = { marker = ' ' },
+          in_progress = { marker = '-' },
+          complete = { marker = 'x' },
+        },
+        status_order = { 'not_started', 'in_progress', 'complete' },
+      },
+      mappings = {
+        -- <CR> follows link / toggles todo (normal); continues lists (insert)
+        MkdnEnter = { { 'n', 'v' }, '<CR>' },
+        MkdnNewListItem = { 'i', '<CR>' },
+        -- Avoid clobbering global <Tab>/<S-Tab> buffer nav: use ]l / [l for links
+        MkdnTab = false,
+        MkdnSTab = false,
+        MkdnNextLink = { 'n', ']l' },
+        MkdnPrevLink = { 'n', '[l' },
+        MkdnGoBack = { 'n', '<BS>' },
+        MkdnGoForward = false,
+        -- <leader>td already lives under the [T]oggle group
+        MkdnToggleToDo = { { 'n', 'v' }, '<leader>td' },
+        MkdnIncreaseHeading = { 'n', '+' },
+        MkdnDecreaseHeading = { 'n', '-' },
+      },
     },
   },
 }

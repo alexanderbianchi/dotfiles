@@ -5,7 +5,6 @@
 	insteadOf = https://github.com/
 	insteadOf = git://github.com/
 [core]
-	hooksPath = /home/bits/.global_hooks
 	editor = nvim
 	pager = delta
 	excludesfile = ~/.gitignore_global
@@ -25,6 +24,11 @@
 	autoSetupRemote = true
 	default = current
 [include]
-	path = ~/.config/gitsign/gitconfig
+	path = ~/.gitconfig.local
 [feature]
 	manyFiles = true
+[filter "lfs"]
+	process = git-lfs filter-process
+	required = true
+	clean = git-lfs clean -- %f
+	smudge = git-lfs smudge -- %f

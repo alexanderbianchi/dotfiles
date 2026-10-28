@@ -174,7 +174,13 @@ vim.o.confirm = true
 vim.keymap.set('n', '<Esc>', '<cmd>nohlsearch<CR>')
 
 -- Diagnostic keymaps
+vim.keymap.set('n', '<leader>e', vim.diagnostic.open_float, { desc = 'Show diagnostic [E]rror under cursor' })
 vim.keymap.set('n', '<leader>q', vim.diagnostic.setloclist, { desc = 'Open diagnostic [Q]uickfix list' })
+
+-- Ghostty sends Cmd+/ as Ctrl-_ (configured in .config/ghostty/config).
+-- Remap to Neovim's built-in visual-mode comment operator.
+vim.keymap.set('x', '<C-_>', 'gc', { remap = true, desc = 'Toggle comment on selection' })
+vim.keymap.set('x', '<D-/>', 'gc', { remap = true, desc = 'Toggle comment on selection' })
 
 -- Exit terminal mode in the builtin terminal with a shortcut that is a bit easier
 -- for people to discover. Otherwise, you normally need to press <C-\><C-n>, which
@@ -345,11 +351,13 @@ require('lazy').setup({
 
       -- Document existing key chains
       spec = {
+        { '<leader>e', desc = 'Show diagnostic [E]rror under cursor' },
         { '<leader>s', group = '[S]earch' },
         { '<leader>t', group = '[T]oggle' },
         { '<leader>h', group = 'Git [H]unk', mode = { 'n', 'v' } },
         { '<leader>o', group = '[O]cto (GitHub)' },
         { '<leader>c', group = '[C]laude Code' },
+        { '<leader>n', group = '[N]otes' },
       },
     },
   },
@@ -745,8 +753,9 @@ require('lazy').setup({
         },
       }
 
-      -- Setup gopls manually (uses gopls from PATH)
+      -- Setup gopls manually since we're using system version
       require('lspconfig').gopls.setup {
+        cmd = { 'gopls' },
         capabilities = capabilities,
       }
     end,

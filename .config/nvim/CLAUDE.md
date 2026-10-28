@@ -14,6 +14,7 @@ The configuration follows a modular structure:
 - **lua/custom/**: Custom user configurations and extensions
   - `plugins/init.lua`: Entry point for custom plugins
   - `terminal.lua`: Enhanced terminal functionality with splits, floating terminal, and code sending
+  - `test_runner.lua`: Current-buffer Go package test runner and bottom output split
 - **lua/kickstart/**: Optional example plugins (commented out by default)
   - `health.lua`: Health check functionality
   - `plugins/`: Collection of optional plugins (autopairs, debug, gitsigns, indent_line, lint, neo-tree)
@@ -55,6 +56,7 @@ Leader key is set to space (`<space>`).
 - `<space>sf`: Search files
 - `<space>sg`: Live grep
 - `<space>/`: Fuzzy search in current buffer
+- `<space>w`: Run tests for the Go package containing the current buffer
 
 ### LSP:
 - `grn`: Rename symbol

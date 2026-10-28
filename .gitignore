@@ -1,1 +1,19 @@
 .DS_Store
+.tmux/
+node_modules/
+__pycache__/
+*.pyc
+.env
+.env.*
+.zshrc.local
+.gitconfig.local
+# Internal overlay is stored only in DataDog/workspaces-dotfiles.
+work/
+scripts/install-work.sh
+scripts/configure-work.mjs
+.pi/
+.claude/
+**/auth.json
+**/hosts.yml
+**/sessions/
+**/mcp-auth/
