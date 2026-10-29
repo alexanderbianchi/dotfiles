@@ -34,9 +34,12 @@ Install-generated Pi package-lock changes are backed up and the pinned lockfile
 restored, so the next sync does not mistake npm output for user edits. Pre-existing
 package edits still stop the installer without being overwritten.
 
-Pi includes copy-friendly output, Herdr integration, an MCP bridge, subagents,
-worktrees, Markdown preview/tree, render-btw, Herdr aside, Vim mode, Go/Rust skills,
-and ketch. Credentials and sessions stay local; use Pi's `/login` on a new machine.
+Pi includes copy-friendly output, Herdr integration, subagents, worktrees,
+Markdown preview/tree, render-btw, Herdr aside, Vim mode, Go/Rust skills and ketch.
+Pi 1.4+ uses built-in MCP instead of the legacy bridge; older hosts retain the
+bridge. Pi 1.1+ selects the upstream subagents compatibility fix. Shared schema
+libraries are supplied by Pi, not private dependency copies. Previously lazy
+MCP servers stay disabled until enabled through `/mcp`, preserving opt-in use. Credentials and sessions stay local; use Pi's `/login` on a new machine.
 Herdr/Trajectory binaries are managed separately, not bundled here.
 
 ```bash
