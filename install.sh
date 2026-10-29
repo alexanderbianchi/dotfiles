@@ -11,8 +11,8 @@ if [[ ! -S "${SSH_AUTH_SOCK:-}" && -S "$HOME/.ssh/ssh_auth_sock" ]]; then
 fi
 mode="${1:-}"
 case "$mode" in
-  ''|--links-only|--pi-only) ;;
-  *) printf 'Usage: %s [--links-only|--pi-only]\n' "$0" >&2; exit 2 ;;
+  ''|--links-only|--pi-only|--nvim-only) ;;
+  *) printf 'Usage: %s [--links-only|--pi-only|--nvim-only]\n' "$0" >&2; exit 2 ;;
 esac
 
 backup_path() {
@@ -57,6 +57,11 @@ materialize_gh_directory() {
     mv "$temporary" "$dest"
   fi
 }
+
+if [[ "$mode" == --nvim-only ]]; then
+  link_file "$DOTFILES_PATH/.config/nvim" "$HOME/.config/nvim"
+  exec "$DOTFILES_PATH/scripts/install-nvim.sh"
+fi
 
 if [[ "$mode" != --pi-only ]]; then
   copy_shell_rc

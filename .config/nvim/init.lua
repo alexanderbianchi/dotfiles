@@ -731,12 +731,17 @@ require('lazy').setup({
       -- You can add other tools here that you want Mason to install
       -- for you, so that they are available from within Neovim.
       local ensure_installed = vim.tbl_keys(servers or {})
-      -- Remove gopls from Mason installation since we use system version
-      ensure_installed = vim.tbl_filter(function(name) return name ~= 'gopls' end, ensure_installed)
+      -- Preserve a system gopls, but bootstrap one on fresh workspaces.
+      if vim.fn.executable('gopls') == 0 then
+        ensure_installed[#ensure_installed + 1] = { 'gopls', version = 'v0.24.0' }
+      end
       vim.list_extend(ensure_installed, {
         'stylua', -- Used to format Lua code
       })
-      require('mason-tool-installer').setup { ensure_installed = ensure_installed }
+      require('mason-tool-installer').setup {
+        ensure_installed = ensure_installed,
+        run_on_start = vim.env.DOTFILES_NVIM_BOOTSTRAP ~= '1',
+      }
 
       require('mason-lspconfig').setup {
         ensure_installed = {}, -- explicitly set to an empty table (Kickstart populates installs via mason-tool-installer)
@@ -973,8 +978,9 @@ require('lazy').setup({
     -- [[ Configure Treesitter ]] See `:help nvim-treesitter`
     opts = {
       ensure_installed = { 'bash', 'c', 'diff', 'html', 'lua', 'luadoc', 'markdown', 'markdown_inline', 'query', 'vim', 'vimdoc' },
-      -- Autoinstall languages that are not installed
-      auto_install = true,
+      -- Provisioning waits for compilers instead of quitting mid-install.
+      sync_install = vim.env.DOTFILES_NVIM_BOOTSTRAP == '1',
+      auto_install = vim.env.DOTFILES_NVIM_BOOTSTRAP ~= '1',
       highlight = {
         enable = true,
         -- Some languages depend on vim's regex highlighting system (such as Ruby) for indent rules.
@@ -1019,6 +1025,8 @@ require('lazy').setup({
   -- In normal mode type `<space>sh` then write `lazy.nvim-plugin`
   -- you can continue same window with `<space>sr` which resumes last telescope search
 }, {
+  -- Provisioning uses a disposable lockfile; normal interactive use is unchanged.
+  lockfile = vim.env.DOTFILES_NVIM_LOCKFILE or (vim.fn.stdpath('config') .. '/lazy-lock.json'),
   ui = {
     -- If you are using a Nerd Font: set icons to an empty table which will use the
     -- default lazy.nvim defined Nerd Font icons, otherwise define a unicode icons table

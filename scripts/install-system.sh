@@ -7,11 +7,11 @@ mkdir -p "$HOME/.local/bin"
 if [[ "$(uname -s)" == Linux ]]; then
   command -v apt-get >/dev/null || { echo 'Install system dependencies manually on non-apt Linux.' >&2; exit 1; }
   sudo apt-get update -qq
-  sudo apt-get install -y tmux fzf ripgrep fd-find xsel make unzip git curl ca-certificates
+  sudo apt-get install -y tmux fzf ripgrep fd-find xsel build-essential python3 unzip git curl ca-certificates
   if ! command -v fd >/dev/null && command -v fdfind >/dev/null; then
     ln -sf "$(command -v fdfind)" "$HOME/.local/bin/fd"
   fi
-  if ! command -v nvim >/dev/null || ! nvim --headless -u NONE '+lua if vim.fn.has("nvim-0.10") == 0 then vim.cmd("cquit") end' +qa; then
+  if ! command -v nvim >/dev/null || ! nvim --headless -u NONE '+lua if vim.fn.has("nvim-0.11.3") == 0 then vim.cmd("cquit") end' +qa; then
     case "$(uname -m)" in
       x86_64) arch=x86_64 ;;
       aarch64|arm64) arch=arm64 ;;
@@ -27,6 +27,9 @@ if [[ "$(uname -s)" == Linux ]]; then
     ln -sf "$release/nvim/bin/nvim" "$HOME/.local/bin/nvim"
     rm -rf "$tmp"
   fi
+
+  # Populate and verify the full editor before optional system-tool work.
+  "$root/scripts/install-nvim.sh"
 
   # Preserve the local preference to build mosh when it is missing.
   if ! command -v mosh >/dev/null; then
@@ -52,6 +55,7 @@ if [[ "$(uname -s)" == Linux ]]; then
   fi
 else
   echo 'macOS: existing system tools are left alone; install nvim, tmux, fzf, ripgrep, fd and git-delta with your package manager.'
+  "$root/scripts/install-nvim.sh"
 fi
 
 if [[ ! -d "$HOME/.oh-my-zsh" ]]; then
