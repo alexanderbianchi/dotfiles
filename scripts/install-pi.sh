@@ -35,5 +35,15 @@ if [[ -d "$package_root/.git" ]] && [[ -n "$(git -C "$package_root" status --por
 fi
 # Run from HOME so a project's .pi/settings.json/trust cannot affect provisioning.
 (cd "$HOME" && pi install "$source")
+# npm can rewrite this tracked lockfile for the workspace's platform/version.
+# The checkout was clean above, so preserve this install-generated artifact and
+# restore the pinned file; otherwise the next sync mistakes it for user edits.
+if ! git -C "$package_root" diff --quiet -- package-lock.json; then
+  mkdir -p "$agent_dir/dotfiles-backups"
+  backup=$(mktemp -d "$agent_dir/dotfiles-backups/pi-lock.XXXXXX")
+  cp "$package_root/package-lock.json" "$backup/package-lock.json"
+  git -C "$package_root" restore -- package-lock.json
+  printf 'Preserved npm-generated lockfile in %s\n' "$backup"
+fi
 [[ -x "$package_root/scripts/bootstrap.sh" ]] || { echo "Missing Pi bootstrap: $package_root" >&2; exit 1; }
 (cd "$HOME" && "$package_root/scripts/bootstrap.sh")

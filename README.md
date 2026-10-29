@@ -17,15 +17,22 @@ git clone https://github.com/alexanderbianchi/dotfiles ~/dotfiles
 The installer:
 
 1. Links an explicit list of configuration files, preserving conflicts under
-   `~/.local/state/dotfiles/backups`. Repeated installs keep correct links alone.
-   Only `gh/config.yml` is linked, never `gh/hosts.yml` or an entire agent directory.
-2. Installs Linux tools, Oh My Zsh, Ghostty terminfo and TPM. TPM is cloned to
-   `~/.local/share/tmux/plugins/tpm` instead of relying on a Git submodule.
-3. Installs Pi 0.85.1 when Pi is missing/older, preserving newer versions. Installs
+   `~/.local/state/dotfiles/backups`. `.zshrc` is a local copy so shell-hook
+   installers cannot dirty the shared checkout and block its next pull. Legacy
+   `gh` directory links are converted to real local directories, preserving
+   credentials; only `gh/config.yml` is linked. Workspace-managed Git config is
+   kept in place for authentication during provisioning.
+2. Installs Pi 0.85.1 when Pi is missing/older, preserving newer versions. Installs
    the pinned private package in `config/pi-package.txt`, then **runs its bootstrap
    to install the full extension and skill set**. GitHub SSH access to
    `alexanderbianchi/pi-config` is required. Failures stop the installer.
-4. Runs `scripts/install-work.sh` only when the company-owned overlay is present.
+3. Runs `scripts/install-work.sh` only when the company-owned overlay is present.
+4. Installs Linux tools, Oh My Zsh, Ghostty terminfo and TPM **after Pi**. TPM is
+   cloned to `~/.local/share/tmux/plugins/tpm` rather than using a Git submodule.
+
+Install-generated Pi package-lock changes are backed up and the pinned lockfile
+restored, so the next sync does not mistake npm output for user edits. Pre-existing
+package edits still stop the installer without being overwritten.
 
 Pi includes copy-friendly output, Herdr integration, an MCP bridge, subagents,
 worktrees, Markdown preview/tree, render-btw, Herdr aside, Vim mode, Go/Rust skills,

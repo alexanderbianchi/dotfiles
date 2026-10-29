@@ -50,7 +50,8 @@ class InstallTests(unittest.TestCase):
         self.assertEqual((gh / 'hosts.yml').read_text(), 'private credentials')
         self.assertEqual((self.agent / 'auth.json').read_text(), 'private auth')
         self.assertEqual((self.agent / 'sessions/local.jsonl').read_text(), 'private session')
-        self.assertEqual((self.home / '.zshrc').resolve(), ROOT / '.zshrc')
+        self.assertFalse((self.home / '.zshrc').is_symlink())
+        self.assertEqual((self.home / '.zshrc').read_bytes(), (ROOT / '.zshrc').read_bytes())
         backups = list((self.home / '.local/state/dotfiles/backups').glob('*'))
         self.assertEqual(len(backups), 2)
         self.assertEqual(sorted(p.read_text() for b in backups for p in b.iterdir()),
@@ -61,7 +62,8 @@ class InstallTests(unittest.TestCase):
         (self.home / '.zshrc').symlink_to('/missing/old-file')
         result = self.run_install('--links-only', root=self.home / 'dotfiles')
         self.assertEqual(result.returncode, 0, result.stderr)
-        self.assertEqual((self.home / '.zshrc').resolve(), ROOT / '.zshrc')
+        self.assertFalse((self.home / '.zshrc').is_symlink())
+        self.assertEqual((self.home / '.zshrc').read_bytes(), (ROOT / '.zshrc').read_bytes())
         backups = (self.home / '.local/state/dotfiles/backups').iterdir()
         self.assertTrue(any((backup / '.zshrc').is_symlink() for backup in backups))
 
@@ -69,6 +71,7 @@ class InstallTests(unittest.TestCase):
         package = self.agent / 'git/github.com/alexanderbianchi/pi-config'
         (package / '.git').mkdir(parents=True)
         (package / 'scripts').mkdir()
+        (package / 'package-lock.json').write_text('original lock')
         bootstrap = package / 'scripts/bootstrap.sh'
         bootstrap.write_text('#!/bin/sh\necho bootstrap >> "$CALL_LOG"\n')
         bootstrap.chmod(0o755)
@@ -76,6 +79,10 @@ class InstallTests(unittest.TestCase):
 if [ "$1" = --version ]; then echo "${MOCK_PI_VERSION:-0.85.1}"; exit; fi
 printf 'pi %s\n' "$*" >> "$CALL_LOG"
 [ "${FAIL_PI:-0}" = 0 ] || exit 17
+if [ "${GENERATE_LOCK:-0}" = 1 ]; then
+  printf 'generated lock' > "$PI_CODING_AGENT_DIR/git/github.com/alexanderbianchi/pi-config/package-lock.json"
+  touch "$PI_CODING_AGENT_DIR/lock-generated"
+fi
 ''')
         self.fake('npm', '''#!/bin/sh
 printf 'npm %s\n' "$*" >> "$CALL_LOG"
@@ -83,6 +90,11 @@ printf 'npm %s\n' "$*" >> "$CALL_LOG"
         self.fake('git', '''#!/bin/sh
 case "$*" in
   *'status --porcelain'*) [ "${DIRTY:-0}" = 0 ] || echo ' M local.ts' ;;
+  *'diff --quiet -- package-lock.json'*) [ ! -f "$PI_CODING_AGENT_DIR/lock-generated" ] ;;
+  *'restore -- package-lock.json'*)
+    printf 'original lock' > "$PI_CODING_AGENT_DIR/git/github.com/alexanderbianchi/pi-config/package-lock.json"
+    rm "$PI_CODING_AGENT_DIR/lock-generated"
+    ;;
   *) echo 'Unexpected git command' >&2; exit 1 ;;
 esac
 ''')
@@ -118,6 +130,17 @@ esac
         self.assertNotIn('bootstrap', self.calls())
         self.assertNotIn('Dotfiles installed.', result.stdout)
 
+    def test_generated_lock_is_preserved_without_blocking_future_sync(self):
+        self.prepare_pi()
+        for _ in range(2):
+            result = self.run_install('--pi-only', GENERATE_LOCK='1')
+            self.assertEqual(result.returncode, 0, result.stderr)
+        lock = self.agent / 'git/github.com/alexanderbianchi/pi-config/package-lock.json'
+        self.assertEqual(lock.read_text(), 'original lock')
+        backups = list(self.agent.glob('dotfiles-backups/pi-lock.*/package-lock.json'))
+        self.assertEqual(len(backups), 2)
+        self.assertTrue(all(p.read_text() == 'generated lock' for p in backups))
+
     def test_dirty_personal_package_is_not_reset(self):
         self.prepare_pi()
         result = self.run_install('--pi-only', DIRTY='1')
@@ -125,7 +148,7 @@ esac
         self.assertIn('Refusing to overwrite', result.stderr)
         self.assertEqual(self.calls(), '')
 
-    def test_default_install_runs_system_then_pi_then_work(self):
+    def test_default_install_runs_pi_and_work_before_optional_tools(self):
         copy = self.home / 'dotfiles'
         shutil.copytree(ROOT / 'scripts', copy / 'scripts')
         shutil.copy2(ROOT / 'install.sh', copy / 'install.sh')
@@ -135,7 +158,55 @@ esac
             p.chmod(0o755)
         result = self.run_install('', root=copy)
         self.assertEqual(result.returncode, 0, result.stderr)
-        self.assertEqual(self.calls().splitlines(), ['system', 'pi', 'work'])
+        self.assertEqual(self.calls().splitlines(), ['pi', 'work', 'system'])
+
+    def test_preserves_workspace_managed_gitconfig(self):
+        config = '# Managed by workspaces\n[include]\n path = ~/.config/datadog/git/config\n'
+        (self.home / '.gitconfig').write_text(config)
+        result = self.run_install('--links-only')
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertFalse((self.home / '.gitconfig').is_symlink())
+        self.assertEqual((self.home / '.gitconfig').read_text(), config)
+
+    def test_migrates_legacy_gh_directory_without_mutating_repo_or_credentials(self):
+        copy = self.home / 'repo'
+        shutil.copytree(ROOT / '.config/gh', copy / '.config/gh')
+        shutil.copy2(ROOT / 'install.sh', copy / 'install.sh')
+        source = copy / '.config/gh/config.yml'
+        original = source.read_bytes()
+        hosts = copy / '.config/gh/hosts.yml'
+        hosts.write_text('credential sentinel')
+        hosts.chmod(0o600)
+        (self.home / '.config').mkdir()
+        gh = self.home / '.config/gh'
+        gh.symlink_to(copy / '.config/gh', target_is_directory=True)
+        for _ in range(2):
+            result = self.run_install('--links-only', root=copy)
+            self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertFalse(source.is_symlink())
+        self.assertEqual(source.read_bytes(), original)
+        self.assertFalse(gh.is_symlink())
+        self.assertEqual((gh / 'config.yml').resolve(), source.resolve())
+        self.assertEqual((gh / 'hosts.yml').read_text(), 'credential sentinel')
+        self.assertEqual((gh / 'hosts.yml').stat().st_mode & 0o777, 0o600)
+
+    def test_shell_hooks_cannot_dirty_source_checkout(self):
+        copy = self.home / 'repo'
+        copy.mkdir()
+        shutil.copy2(ROOT / 'install.sh', copy / 'install.sh')
+        source = copy / '.zshrc'
+        source.write_text('# original shell config\n')
+        (self.home / '.zshrc').symlink_to(source)
+        result = self.run_install('--links-only', root=copy)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        with (self.home / '.zshrc').open('a') as f:
+            f.write('# automatic tool hook\n')
+        self.assertEqual(source.read_text(), '# original shell config\n')
+        result = self.run_install('--links-only', root=copy)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        backups = self.home / '.local/state/dotfiles/backups'
+        self.assertTrue(any('# automatic tool hook' in p.read_text()
+                            for p in backups.glob('*/.zshrc') if not p.is_symlink()))
 
     def test_stable_workspace_ssh_socket_is_used(self):
         self.prepare_pi()
